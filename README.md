@@ -1,5 +1,5 @@
-# Income-prediction-from-census-data
-R code to predict if person's income exceeds $50k / year or not, based on the census data.
+# Income prediction from census data
+R code to predict person's income exceeds $50k / year or not, based on the census data.
 
 ## Data set location
 https://archive.ics.uci.edu/ml/datasets/census+income

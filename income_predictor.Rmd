@@ -1,0 +1,142 @@
+The data is hosted on UCI Machine Learning Repository and is named as – Census Income Data Set, sometimes referred as ‘Adult Dataset’. After getting data, we are doing some cleanup, plotting data and applying different algorithms
+
+```{r}
+csvData <- read.csv("income.csv")
+head(csvData)
+colnames(csvData) <- c("age", "workclass", "fnlwgt", "education", "education-num", "marital-status", "occupation", "relationship", "race", "sex", "capital-gain", "capital-loss", "hours-per-week", "native-country", "income")
+head(csvData)
+
+```
+Delete rows with missing values
+
+```{r}
+#unique(csvData$workclass)
+#unique(csvData$occupation)
+#unique(csvData$`native-country`)
+csData <- csvData[!grepl(" \\?", csvData$workclass),]
+csvData <- csvData[!grepl(" \\?", csvData$occupation),]
+csvData <- csvData[!grepl(" \\?", csvData$`native-country`),]
+str(csData)
+```
+Reduce number of sample to 2000
+
+```{r}
+csvData <- csvData[1:2000,]
+```
+
+
+Map output values to numeric
+
+```{r}
+strings <- sort(unique(csvData$income))
+numbers <- 0:(length(strings) - 1)
+names(numbers) <- strings
+csvData$incomenum <- numbers[csvData$income]
+```
+
+Output data distribution
+
+```{r}
+#install.packages("ggplot2")
+library(ggplot2)
+#install.packages("gridExtra")
+library(gridExtra)
+ggplot(csvData, aes(x=csvData$incomenum)) + geom_histogram(color = "black", fill = "red", bins=10)
+```
+
+Input data distribution
+
+```{r}
+plot1 <- ggplot(csvData, aes(x=csvData$age, fill=factor(csvData$income))) + geom_bar()  + labs(x="Age", y="Count")
+plot2 <- ggplot(csvData, aes(x=csvData$workclass, fill=factor(csvData$income))) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + labs(x="Workclass", y="Count")
+plot3 <- ggplot(csvData, aes(x=csvData$fnlwgt, y=factor(csvData$income))) + geom_point() + labs(x="fnlwgt", y="Income level")
+plot4 <- ggplot(csvData, aes(x=csvData$education, fill=factor(csvData$income))) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))+ labs(x="Education", y="Count")
+plot5 <- ggplot(csvData, aes(x=csvData$`education-num`, fill=factor(csvData$income))) + geom_bar() + labs(x="Years of Education", y="Count")
+plot6 <- ggplot(csvData, aes(x=csvData$`marital-status`, fill=factor(csvData$income))) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))+ labs(x="Marital Status", y="Count")
+plot7 <- ggplot(csvData, aes(x=csvData$occupation, fill=factor(csvData$income))) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))+ labs(x="Occupation", y="Count")
+plot8 <- ggplot(csvData, aes(x=csvData$relationship, fill=factor(csvData$income))) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))+ labs(x="Relationship", y="Count")
+plot9 <- ggplot(csvData, aes(x=csvData$relationship, fill=factor(csvData$income))) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+plot10 <- ggplot(csvData, aes(x=csvData$race, fill=factor(csvData$income))) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+plot11 <- ggplot(csvData, aes(x=csvData$sex, fill=factor(csvData$income))) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))+ labs(x="Sex", y="Count")
+plot12 <- ggplot(csvData, aes(x=csvData$`capital-gain`, y=factor(csvData$income))) + geom_point() + labs(x="capital-gain", y="Income level")
+#plot13 <- ggplot(csvData, aes(x=csvData$`capital-loss`, y=factor(csvData$income))) + + geom_point() + labs(x="capital-loss", y="Income level")
+plot14 <- ggplot(csvData, aes(x=csvData$`hours-per-week`, fill=factor(csvData$income))) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))+ labs(x="Hours Per Week", y="Count")
+plot15 <- ggplot(csvData, aes(x=csvData$`native-country`, fill=factor(csvData$income))) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))+ labs(x="Native Country", y="Count")
+ 
+#grid.arrange(plot7, plot8, ncol=1)
+#grid.arrange(plot9, plot10, ncol=1)
+#grid.arrange(plot11, plot12, ncol=1)
+#grid.arrange(plot13, plot14, ncol=1)
+#grid.arrange(plot15, ncol=1)
+plot10
+plot15
+```
+
+Create	train	and	test	data	sets
+
+```{r}
+numrow <- nrow(csvData)
+rand <- sample(1:numrow)
+cutPoint <- floor(2*numrow/3)
+trainData <- csvData[rand[1:cutPoint],]
+testData <- csvData[rand[(cutPoint+1):numrow],]
+```
+Linear Model 
+```{r}
+trainData$incomenum <- as.factor(trainData$incomenum)
+lmOut <- glm(formula = incomenum ~ age+workclass+education+occupation+relationship+sex+`hours-per-week`, data=trainData, family=binomial(link='logit') )
+summary(lmOut)
+fitted.results <- predict(lmOut,testData, type="response")
+lmPredict <- ifelse(fitted.results > 0.5,1,0)
+
+misClasificError <- mean(lmPredict != trainData$incomenum)
+print(paste('Accuracy',1-misClasificError))
+```
+
+
+Modelling techniques for classification
+
+```{r}
+#install.packages("kernlab")		
+library(kernlab)
+
+ksvmOut <- ksvm(income ~ age+workclass+education+`education-num`+`marital-status`+occupation+relationship+race+sex+`hours-per-week`, data=trainData, kernel="rbfdot", kpar="automatic", C=5, cross=3, prob.model=TRUE)
+ksvmPred <- predict(ksvmOut, testData)
+compTable <- table(data.frame(testData$income, ksvmPred))
+compTable
+predictionAccuracy <- (compTable[1,1]+compTable[2,2])/667 * 100
+predictionAccuracy
+prediction1 <- as.factor(ifelse(ksvmPred == testData$income, "No Error", "Error"))
+plot1 <- plot(prediction1, width=3, main="SVM", ylab="No of samples")
+plot1
+
+library(gridExtra)
+#install.packages("e1071")
+library(e1071)
+
+nbOut <- naiveBayes(formula=income ~ age+workclass+education+`education-num`+`marital-status`+occupation+relationship+race+sex+`hours-per-week`, data=trainData)
+nbPred <- predict(nbOut, testData)
+testData[testData$income == nbPred,]
+testData[testData$income != nbPred,]
+compTable <- table(data.frame(testData$income, nbPred))
+predictionAccuracy <- (compTable[1,1]+compTable[2,2])/667 * 100
+prediction3<- as.factor(ifelse(nbPred == testData$income, "No Error", "Error"))
+plot2 <- plot(prediction3, width=3, main="Naive Bayes", ylab="No of samples")
+plot2
+```
+
+Associative rules
+
+```{r}
+#install.packages("arules")
+library(arules)
+
+#install.packages("arulesViz")
+#library(arulesViz)
+str(csvData)
+discreteData <- data.frame(csvData$workclass, csvData$education, csvData$`marital-status`, csvData$occupation, csvData$relationship, csvData$race,
+                           csvData$sex, csvData$`native-country`, csvData$income)
+rules <- apriori(discreteData, parameter = list(support=0.50, confidence=0.80))
+inspect(rules)
+```
